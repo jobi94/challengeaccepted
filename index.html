@@ -304,21 +304,28 @@ input.wi{
   /* Split: single column */
   .split{grid-template-columns:1fr;}
   .pp{border-right:none;border-bottom:2px solid var(--bdr);}
-  .panel{padding:.8rem 1rem .9rem;gap:.6rem;}
+  .panel{padding:.75rem .85rem .85rem;gap:.55rem;}
 
   /* Profile: horizontal row on mobile */
-  .prof{flex-direction:row;text-align:left;gap:.7rem;}
-  .ava{width:52px;height:52px;flex-shrink:0;}
-  .pname{font-size:1.3rem;}
+  .prof{flex-direction:row;text-align:left;gap:.6rem;}
+  .ava{width:48px;height:48px;flex-shrink:0;}
+  .pname{font-size:1.2rem;}
 
-  /* Entry columns: 3 on mobile (hide dates 2&4, keep 1,3,5 + show all) */
-  .entries{grid-template-columns:repeat(3,1fr);gap:.25rem;}
-  /* show first 3; last 2 wrap or stay — all 5 still show, just wrap nicely */
-  .entries{grid-template-columns:repeat(5,1fr);gap:.15rem;}
-  .ecol input{font-size:.62rem;padding:.18rem .1rem;width:100%;}
-  .ecol .edate{font-size:.55rem;}
-  .ecol .edelta{font-size:.58rem;}
-  .ecol .ebg{font-size:.62rem;padding:.15rem .05rem;}
+  /* Entry columns — horizontal scroll on mobile */
+  .entries{
+    display:flex;flex-wrap:nowrap;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+    gap:.4rem;padding-bottom:.3rem;
+    scrollbar-width:thin;scrollbar-color:var(--bdr) transparent;
+  }
+  .entries::-webkit-scrollbar{height:3px;}
+  .entries::-webkit-scrollbar-track{background:transparent;}
+  .entries::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px;}
+  .ecol{flex:0 0 auto;width:68px;min-width:68px;align-items:center;}
+  .ecol input{font-size:.68rem;padding:.22rem .15rem;width:100%;text-align:center;}
+  .ecol .edate{font-size:.56rem;text-align:center;line-height:1.2;}
+  .ecol .edelta{font-size:.6rem;}
+  .ecol .ebg{font-size:.68rem;padding:.18rem .1rem;text-align:center;}
 
   /* Progress bar */
   .prog-meta{font-size:.68rem;}
@@ -331,17 +338,105 @@ input.wi{
 
 /* ── SMALL MOBILE (≤380px) ───────────────────── */
 @media(max-width:380px){
-  .hdr-title{font-size:1rem;}
-  .entries{gap:.1rem;}
-  .ecol input{font-size:.55rem;}
+  .hdr-title{font-size:.95rem;}
+  .ecol{width:60px;min-width:60px;}
+  .ecol input{font-size:.62rem;}
+  .ecol .edate{font-size:.5rem;}
+  .panel{padding:.6rem .7rem .75rem;}
+}
+
+
+/* ── LOGIN OVERLAY ───────────────────────────── */
+.login-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(145deg,#0d3a70 0%,#1b6fab 45%,#7a2060 100%);
+  display:flex;align-items:center;justify-content:center;
+  padding:1.5rem;
+}
+.login-card{
+  background:#fff;border-radius:20px;
+  padding:2.2rem 2rem 2rem;
+  max-width:360px;width:100%;
+  box-shadow:0 12px 48px rgba(0,0,0,.28);
+  text-align:center;
+}
+.login-icon{font-size:2.6rem;line-height:1;margin-bottom:.5rem;}
+.login-title{
+  font-family:'Playfair Display',Georgia,serif;
+  font-size:1.7rem;font-weight:900;
+  background:linear-gradient(135deg,#1b6fab,#b0306a);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  margin-bottom:.2rem;
+}
+.login-sub{font-size:.78rem;color:#8a8a9a;margin-bottom:1.4rem;font-weight:600;}
+.login-form{display:flex;flex-direction:column;gap:.75rem;}
+.login-form select,
+.login-form input[type=password]{
+  width:100%;padding:.65rem .9rem;
+  border:1.5px solid #d8d8e4;border-radius:10px;
+  font-family:'Nunito',system-ui,sans-serif;font-size:.9rem;font-weight:700;
+  color:#141420;background:#f8f8fa;
+  outline:none;transition:border-color .2s;
+  -webkit-appearance:none;appearance:none;
+}
+.login-form select:focus,
+.login-form input[type=password]:focus{border-color:#1b6fab;}
+.login-btn{
+  width:100%;padding:.7rem;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#1b6fab 0%,#b0306a 100%);
+  color:#fff;font-family:'Nunito',system-ui,sans-serif;
+  font-size:1rem;font-weight:800;cursor:pointer;letter-spacing:.03em;
+  transition:opacity .2s;
+}
+.login-btn:hover{opacity:.88;}
+.login-err{
+  font-size:.78rem;font-weight:700;color:#cc2828;
+  min-height:1.1rem;margin-top:-.25rem;
+}
+
+/* Logout button in header */
+#logoutBtn{
+  position:absolute;left:1.1rem;top:50%;transform:translateY(-50%);
+  background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);
+  color:#fff;border-radius:8px;padding:.28rem .65rem;
+  font-family:'Nunito',system-ui,sans-serif;font-size:.7rem;font-weight:800;
+  cursor:pointer;display:none;letter-spacing:.04em;
+  transition:background .2s;
+}
+#logoutBtn:hover{background:rgba(255,255,255,.3);}
+
+@media(max-width:640px){
+  .login-card{padding:1.6rem 1.2rem 1.4rem;}
+  .login-title{font-size:1.35rem;}
+  #logoutBtn{font-size:.62rem;padding:.22rem .5rem;}
 }
 
 </style>
+
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-card">
+    <div class="login-icon">💪</div>
+    <h1 class="login-title">Challenge Accepted</h1>
+    <p class="login-sub">Pepíček &amp; Lenička · 10 kg challenge</p>
+    <div class="login-form">
+      <select id="loginUser">
+        <option value="">Vyber uživatele...</option>
+        <option value="Pepíček">Pepíček 🤴</option>
+        <option value="Lenička">Lenička 🦊</option>
+      </select>
+      <input type="password" id="loginPass" placeholder="Heslo" autocomplete="current-password">
+      <button class="login-btn" id="loginBtn">Přihlásit se</button>
+      <div id="loginErr" class="login-err"></div>
+    </div>
+  </div>
+</div>
 
 <div class="app">
 
   <!-- HEADER -->
   <header class="hdr">
+    <button id="logoutBtn" onclick="doLogout()">Odhlásit</button>
     <h1 class="hdr-title">Challenge Accepted 💪</h1>
     <p class="hdr-sub">Pepíček &amp; Lenička · −10 kg · říjen 2026 → leden 2027</p>
     <div class="prize-chip">
@@ -636,7 +731,57 @@ function loadWeights(){
   });
 }
 
+
+// ── AUTH ─────────────────────────────────────────
+const USERS = { 'Pepíček': 'Challenge Accepted 1234', 'Lenička': 'Challenge Accepted 1234' };
+const SESSION_KEY = 'ca_session_v1';
+
+function checkSession(){
+  try{
+    const s = localStorage.getItem(SESSION_KEY);
+    if(s){
+      const d = JSON.parse(s);
+      if(USERS[d.user] !== undefined){
+        showApp(d.user);
+        return true;
+      }
+    }
+  }catch(e){}
+  return false;
+}
+
+function showApp(user){
+  const ov = document.getElementById('loginOverlay');
+  if(ov) ov.style.display='none';
+  const lb = document.getElementById('logoutBtn');
+  if(lb){ lb.style.display='block'; lb.title='Přihlášen: '+user; }
+}
+
+function doLogout(){
+  try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
+  location.reload();
+}
+
+function bindLogin(){
+  const btn = document.getElementById('loginBtn');
+  const passEl = document.getElementById('loginPass');
+  if(!btn) return;
+  function tryLogin(){
+    const user = document.getElementById('loginUser').value;
+    const pass = passEl.value;
+    const err  = document.getElementById('loginErr');
+    if(!user){ err.textContent='Vyber uživatele'; return; }
+    if(USERS[user] !== pass){ err.textContent='Špatné heslo ❌'; passEl.value=''; passEl.focus(); return; }
+    try{ localStorage.setItem(SESSION_KEY, JSON.stringify({user, ts:Date.now()})); }catch(e){}
+    showApp(user);
+  }
+  btn.addEventListener('click', tryLogin);
+  passEl.addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+}
+
 document.addEventListener("DOMContentLoaded",()=>{
+  if(!checkSession()){ /* wait for login */ }
+  bindLogin();
   load();
   buildEntries("p");buildEntries("l");
   buildChart();
