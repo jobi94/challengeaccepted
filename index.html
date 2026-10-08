@@ -83,6 +83,20 @@ html,body{background:var(--bg);color:var(--fg);font-family:var(--fb);-webkit-tex
   font-family:var(--fb);font-size:.68rem;font-weight:800;cursor:pointer;letter-spacing:.04em;
 }
 #logoutBtn:hover{background:rgba(255,255,255,.3);}
+#resetBtn{
+  position:absolute;left:.9rem;bottom:.3rem;
+  background:rgba(255,80,80,.25);border:1.5px solid rgba(255,80,80,.45);
+  color:rgba(255,200,200,.9);border-radius:6px;padding:.15rem .5rem;
+  font-family:var(--fb);font-size:.58rem;font-weight:800;cursor:pointer;letter-spacing:.04em;
+}
+#resetBtn:hover{background:rgba(255,80,80,.4);}
+#fbStatus{
+  position:fixed;bottom:3.2rem;right:1rem;z-index:100;
+  background:rgba(200,30,30,.85);color:#fff;
+  font-size:.65rem;font-weight:700;padding:.3rem .65rem;border-radius:20px;
+  display:none;
+}
+#fbStatus.visible{display:block;}
 
 /* ── GRAPH ────────────────────────────────── */
 .graph-area{background:var(--sur);border-bottom:1.5px solid var(--bdr);padding:.4rem 1.2rem .45rem;display:flex;align-items:center;gap:.8rem;}
@@ -253,10 +267,12 @@ html,body{background:var(--bg);color:var(--fg);font-family:var(--fb);-webkit-tex
 <div id="app">
   <header class="hdr">
     <button id="logoutBtn">⎋ Odhlásit</button>
+    <button id="resetBtn" title="Smaže veškerá data">🗑 Reset dat</button>
     <h1 class="hdr-title">Challenge Accepted 💪</h1>
     <p class="hdr-sub">Pepíček &amp; Lenička · −10 kg · říjen 2026 → leden 2027</p>
     <div class="prize-chip"><span class="amt">15 000 Kč</span><div class="lbl">🏆 Wellness &amp; výlet</div></div>
   </header>
+  <div id="fbStatus"></div>
 
   <div class="graph-area">
     <div class="chart-wrap"><canvas id="chart"></canvas></div>
@@ -533,11 +549,22 @@ function initCountdown(){
 
 // ── FIREBASE SYNC ─────────────────────────────────────────
 var lastPushed='';
+var fbOk=null;
+
 function showToast(msg){
   var el=document.getElementById('syncStatus');
   if(!el)return;
   el.textContent=msg;el.classList.add('show');
   clearTimeout(el._t);el._t=setTimeout(function(){el.classList.remove('show');},2500);
+}
+
+function setFbStatus(ok,msg){
+  var el=document.getElementById('fbStatus');
+  if(!el)return;
+  if(ok){el.classList.remove('visible');fbOk=true;return;}
+  el.textContent='🔴 Firebase: '+msg;
+  el.classList.add('visible');
+  fbOk=false;
 }
 
 function firebasePush(){
@@ -551,25 +578,30 @@ function firebasePush(){
     headers:{'Content-Type':'application/json'},
     body:payload
   }).then(function(r){
-    if(r.ok)showToast('✓ Uloženo');
-    else showToast('⚠ Chyba '+r.status);
-  }).catch(function(){showToast('⚠ Offline');});
+    if(r.ok){showToast('✓ Uloženo');setFbStatus(true);}
+    else{showToast('⚠ Chyba '+r.status);setFbStatus(false,'zápis '+r.status);}
+  }).catch(function(){showToast('⚠ Offline');setFbStatus(false,'offline');});
 }
 
 function applyFirebaseData(who,data){
+  /* Firebase is authoritative — fully replace local state for this user,
+     but skip own panel while a push is in flight (pushTimer pending) */
+  var own=currentUser==='Pepicek'?'p':'l';
+  if(who===own&&pushTimer!==null)return;
   if(!data||typeof data!=='object')return;
+  var newW={};
+  Object.keys(data).forEach(function(k){if(data[k]!==null)newW[k]=data[k];});
   var changed=false;
-  Object.keys(data).forEach(function(k){
-    if(state[who].w[k]!==data[k]){state[who].w[k]=data[k];changed=true;}
-  });
+  var allKeys=Object.keys(state[who].w).concat(Object.keys(newW));
+  allKeys.forEach(function(k){if(state[who].w[k]!==newW[k])changed=true;});
   if(!changed)return;
+  state[who].w=newW;
   try{localStorage.setItem(WKEY,JSON.stringify(state));}catch(e){}
   DATES.forEach(function(d){
     var el=document.getElementById('i_'+who+'_'+d.key);
-    if(el&&data[d.key]!==undefined){
-      var newVal=String(data[d.key]);
-      if(el.value!==newVal)el.value=newVal;
-    }
+    if(!el)return;
+    var v=newW[d.key];
+    el.value=(v!==undefined)?String(v):'';
   });
   recalc(who);
   var other=currentUser==='Pepicek'?'l':'p';
@@ -580,10 +612,37 @@ function fetchBoth(){
   if(!FIREBASE_URL)return;
   ['p','l'].forEach(function(who){
     fetch(FIREBASE_URL+'/ca/weights/'+who+'.json')
-      .then(function(r){return r.ok?r.json():null;})
+      .then(function(r){
+        setFbStatus(r.ok,'čtení '+r.status);
+        return r.ok?r.json():null;
+      })
       .then(function(data){if(data)applyFirebaseData(who,data);})
-      .catch(function(){});
+      .catch(function(){setFbStatus(false,'nedostupné');});
   });
+}
+
+function resetAllData(){
+  if(!confirm('Smazat veškerá data na všech zařízeních?'))return;
+  try{localStorage.removeItem(WKEY);}catch(e){}
+  state={p:{w:{}},l:{w:{}}};
+  DATES.forEach(function(d){
+    ['p','l'].forEach(function(who){
+      var el=document.getElementById('i_'+who+'_'+d.key);
+      if(el)el.value='';
+    });
+  });
+  recalc('p');recalc('l');
+  if(FIREBASE_URL){
+    ['p','l'].forEach(function(who){
+      fetch(FIREBASE_URL+'/ca/weights/'+who+'.json',{
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:'null'
+      }).catch(function(){});
+    });
+  }
+  lastPushed='';
+  showToast('✓ Data smazána');
 }
 
 function startSync(){
@@ -592,6 +651,7 @@ function startSync(){
   setInterval(fetchBoth,5000);
   window.addEventListener('focus',fetchBoth);
   window.addEventListener('online',fetchBoth);
+  document.getElementById('resetBtn').addEventListener('click',resetAllData);
 }
 
 // ── INIT ──────────────────────────────────────────────────
