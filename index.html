@@ -476,8 +476,8 @@ function buildChart(){
     data:{
       labels:['Začátek','30. říj','30. lis','31. pro','Cíl'],
       datasets:[
-        {label:'Pepíček',data:[null,null,null,null,null],borderColor:'#1b6fab',backgroundColor:'rgba(27,111,171,.12)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#1b6fab',tension:.35,fill:true},
-        {label:'Lenička',data:[null,null,null,null,null],borderColor:'#b0306a',backgroundColor:'rgba(176,48,106,.10)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#b0306a',tension:.35,fill:true},
+        {label:'Pepíček',data:[null,null,null,null,null],borderColor:'#1b6fab',backgroundColor:'rgba(27,111,171,.12)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#1b6fab',tension:.35,fill:true,spanGaps:true},
+        {label:'Lenička',data:[null,null,null,null,null],borderColor:'#b0306a',backgroundColor:'rgba(176,48,106,.10)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#b0306a',tension:.35,fill:true,spanGaps:true},
         {label:'Cíl',data:[0,2,5,8,10],borderColor:'rgba(184,138,24,.55)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,tension:0,fill:false}
       ]
     },
@@ -490,6 +490,7 @@ function buildChart(){
       }
     }
   });
+  setTimeout(function(){chart.resize();updateChart();},80);
 }
 
 function updateChart(){
@@ -663,7 +664,7 @@ function initApp(){
   loadPhotos();
   initCountdown();
   startSync();
-  // Desktop: both panels side by side; handled by CSS
+  setTimeout(updateChart,300);
 }
 
 // Boot
