@@ -204,8 +204,10 @@ html,body{background:var(--bg);color:var(--fg);font-family:var(--fb);-webkit-tex
 /* ── LIGHTBOX ─────────────────────────────── */
 #photoModal{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.88);opacity:0;pointer-events:none;transition:opacity .2s;}
 #photoModal.open{opacity:1;pointer-events:all;}
-#photoModal img{max-width:92vw;max-height:88vh;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6);}
+#photoModal img{max-width:92vw;max-height:82vh;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6);}
 #photoModalClose{position:absolute;top:.9rem;right:.9rem;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+#photoModalDelete{position:absolute;bottom:1.4rem;left:50%;transform:translateX(-50%);background:rgba(200,30,30,.75);border:1.5px solid rgba(255,100,100,.4);color:#fff;border-radius:20px;padding:.35rem 1.1rem;font-size:.75rem;font-weight:800;cursor:pointer;display:none;gap:.35rem;align-items:center;}
+#photoModalDelete.visible{display:flex;}
 
 /* ── MOBILE ───────────────────────────────── */
 @media(max-width:700px){
@@ -515,14 +517,41 @@ function updateChart(){
 // ── PHOTOS ────────────────────────────────────────────────
 var PHKEY='ca_ph_v3';
 
-function openPhoto(src){
+var _photoWho=null,_photoSlot=null;
+
+function openPhoto(src,who,slot){
   document.getElementById('photoModalImg').src=src;
+  _photoWho=who||null;_photoSlot=slot||null;
+  var del=document.getElementById('photoModalDelete');
+  var own=currentUser==='Pepicek'?'p':'l';
+  if(del){del.classList.toggle('visible',!!(who&&slot&&who===own));}
   document.getElementById('photoModal').classList.add('open');
 }
-function closePhoto(){document.getElementById('photoModal').classList.remove('open');}
+function closePhoto(){
+  document.getElementById('photoModal').classList.remove('open');
+  _photoWho=null;_photoSlot=null;
+}
+function deletePhoto(who,slot){
+  if(!who||!slot)return;
+  if(!confirm('Smazat tuto fotku?'))return;
+  try{var ph=JSON.parse(localStorage.getItem(PHKEY))||{};delete ph[who+'_'+slot];localStorage.setItem(PHKEY,JSON.stringify(ph));}catch(e){}
+  var div=document.getElementById('ph_'+who+'_'+slot);
+  if(div){
+    var img=div.querySelector('img');if(img)img.remove();
+    var btn=div.querySelector('.view-ph-btn');if(btn)btn.remove();
+  }
+  if(FIREBASE_URL){
+    fetch(FIREBASE_URL+'/ca/photos/'+who+'_'+slot+'.json',{
+      method:'PUT',headers:{'Content-Type':'application/json'},body:'null'
+    }).catch(function(){});
+  }
+  closePhoto();
+  showToast('✓ Fotka smazána');
+}
 function initPhotoModal(){
   var m=document.getElementById('photoModal');if(!m)return;
   document.getElementById('photoModalClose').addEventListener('click',closePhoto);
+  document.getElementById('photoModalDelete').addEventListener('click',function(){deletePhoto(_photoWho,_photoSlot);});
   m.addEventListener('click',function(e){if(e.target===this)closePhoto();});
 }
 
@@ -535,7 +564,7 @@ function showPhoto(who,slot,src){
   if(!btn){
     btn=document.createElement('button');
     btn.className='view-ph-btn';btn.type='button';btn.textContent='🔍';
-    btn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openPhoto(img.src);});
+    btn.addEventListener('click',(function(w,s){return function(e){e.preventDefault();e.stopPropagation();openPhoto(img.src,w,s);};})(who,slot));
     div.appendChild(btn);
   }
 }
@@ -733,6 +762,7 @@ if(document.readyState==='loading'){
 <div id="photoModal">
   <img id="photoModalImg" src="" alt="">
   <button id="photoModalClose">✕</button>
+  <button id="photoModalDelete">🗑 Smazat fotku</button>
 </div>
 </body>
 </html>
