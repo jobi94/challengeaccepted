@@ -71,10 +71,10 @@ html,body{
 /* ── APP SHELL (desktop: fixed screen, mobile: scroll) ── */
 #app{display:none;}
 
-/* DESKTOP */
+/* DESKTOP — only when .visible class added by JS after login */
 @media(min-width:701px){
-  html,body{overflow:hidden;}
-  #app{
+  html.app-open,body.app-open{overflow:hidden;}
+  #app.visible{
     display:grid;height:100%;
     grid-template-rows:auto auto auto 1fr;
     overflow:hidden;
@@ -82,8 +82,8 @@ html,body{
 }
 /* MOBILE */
 @media(max-width:700px){
-  html,body{overflow:auto;height:auto;}
-  #app{display:block;}
+  html.app-open,body.app-open{overflow:auto;height:auto;}
+  #app.visible{display:block;}
 }
 
 /* ── HEADER ──────────────────────────────────── */
@@ -484,15 +484,9 @@ function tryLogin(){
 
 function showApp(user){
   document.getElementById('loginOverlay').style.display='none';
-  document.getElementById('app').style.display='';
-  // trigger desktop vs mobile display
-  if(window.innerWidth > 700){
-    document.getElementById('mobTabs').style.display='none';
-    document.getElementById('panelL').classList.add('active');
-  } else {
-    // panels shown via tab buttons
-    document.getElementById('panelL').classList.remove('active');
-  }
+  document.getElementById('app').classList.add('visible');
+  document.documentElement.classList.add('app-open');
+  document.body.classList.add('app-open');
   initApp();
 }
 
@@ -711,13 +705,20 @@ function initApp(){
   initCountdown();
   initTabs();
 
-  // On desktop, always show both panels
+  // On desktop show both panels; on mobile show only first tab
   function handleResize(){
     var desktop=window.innerWidth>700;
     document.getElementById('mobTabs').style.display=desktop?'none':'';
     if(desktop){
       document.getElementById('panelP').classList.add('active');
       document.getElementById('panelL').classList.add('active');
+    } else {
+      // ensure only active tab panel shows
+      var anyActive=document.querySelector('.mob-tab.active-p,.mob-tab.active-l');
+      if(!anyActive){
+        document.getElementById('panelP').classList.add('active');
+        document.getElementById('tabP').className='mob-tab active-p';
+      }
     }
   }
   window.addEventListener('resize',handleResize);
