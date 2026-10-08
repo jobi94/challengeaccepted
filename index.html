@@ -725,8 +725,12 @@ function initApp(){
   handleResize();
 }
 
-// Boot
-window.addEventListener('DOMContentLoaded', initLogin);
+// Boot — script is at bottom of body, DOM is already ready
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initLogin);
+} else {
+  initLogin();
+}
 </script>
 </body>
 </html>
