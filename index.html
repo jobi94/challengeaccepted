@@ -520,8 +520,11 @@ function openPhoto(src){
   document.getElementById('photoModal').classList.add('open');
 }
 function closePhoto(){document.getElementById('photoModal').classList.remove('open');}
-document.getElementById('photoModalClose').addEventListener('click',closePhoto);
-document.getElementById('photoModal').addEventListener('click',function(e){if(e.target===this)closePhoto();});
+function initPhotoModal(){
+  var m=document.getElementById('photoModal');if(!m)return;
+  document.getElementById('photoModalClose').addEventListener('click',closePhoto);
+  m.addEventListener('click',function(e){if(e.target===this)closePhoto();});
+}
 
 function showPhoto(who,slot,src){
   var div=document.getElementById('ph_'+who+'_'+slot);if(!div)return;
@@ -715,6 +718,7 @@ function initApp(){
   loadWeights();
   loadPhotos();
   initCountdown();
+  initPhotoModal();
   startSync();
   setTimeout(updateChart,300);
 }
