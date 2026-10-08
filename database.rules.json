@@ -1,0 +1,16 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "ca": {
+      "weights": {
+        "p": { ".read": true, ".write": true },
+        "l": { ".read": true, ".write": true }
+      },
+      "photos": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
