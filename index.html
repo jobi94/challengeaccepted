@@ -548,32 +548,43 @@ function firebasePush(){
   }).then(function(){showToast('✓ Synchronizováno');}).catch(function(){showToast('⚠ Offline');});
 }
 
-function applyOtherData(other,path,data){
+function applyFirebaseData(who,path,data){
   var changed=false;
   if(path==='/'||path===''){
     if(!data||typeof data!=='object')return;
     Object.keys(data).forEach(function(k){
-      if(state[other].w[k]!==data[k]){state[other].w[k]=data[k];changed=true;}
+      if(state[who].w[k]!==data[k]){state[who].w[k]=data[k];changed=true;}
     });
     if(changed){
       DATES.forEach(function(d){
-        var el=document.getElementById('i_'+other+'_'+d.key);
+        var el=document.getElementById('i_'+who+'_'+d.key);
         if(el&&data[d.key]!==undefined&&el.value!=data[d.key])el.value=data[d.key];
       });
     }
   }else{
     var key=path.replace(/^\//,'');
-    if(state[other].w[key]!==data){state[other].w[key]=data;changed=true;}
+    if(state[who].w[key]!==data){state[who].w[key]=data;changed=true;}
     if(changed){
-      var el=document.getElementById('i_'+other+'_'+key);
+      var el=document.getElementById('i_'+who+'_'+key);
       if(el&&el.value!=data)el.value=data;
     }
   }
   if(changed){
     try{localStorage.setItem(WKEY,JSON.stringify(state));}catch(e){}
-    recalc(other);
-    showToast('↓ Nová data '+(other==='p'?'Pepíčka':'Leničky'));
+    recalc(who);
+    var other=currentUser==='Pepicek'?'l':'p';
+    if(who===other)showToast('↓ Nová data '+(who==='p'?'Pepíčka':'Leničky'));
   }
+}
+
+function firebaseInitPull(){
+  if(!FIREBASE_URL)return;
+  ['p','l'].forEach(function(who){
+    fetch(FIREBASE_URL+'/ca/weights/'+who+'.json')
+      .then(function(r){return r.json();})
+      .then(function(data){applyFirebaseData(who,'/',data);})
+      .catch(function(){});
+  });
 }
 
 function startSSE(){
@@ -583,13 +594,13 @@ function startSSE(){
   try{
     sseSource=new EventSource(FIREBASE_URL+'/ca/weights/'+other+'.json');
     sseSource.addEventListener('put',function(e){
-      try{var m=JSON.parse(e.data);applyOtherData(other,m.path,m.data);}catch(err){}
+      try{var m=JSON.parse(e.data);applyFirebaseData(other,m.path,m.data);}catch(err){}
     });
     sseSource.addEventListener('patch',function(e){
       try{
         var m=JSON.parse(e.data);
         if(m.data&&typeof m.data==='object'){
-          Object.keys(m.data).forEach(function(k){applyOtherData(other,'/'+k,m.data[k]);});
+          Object.keys(m.data).forEach(function(k){applyFirebaseData(other,'/'+k,m.data[k]);});
         }
       }catch(err){}
     });
@@ -602,12 +613,16 @@ function startSSE(){
 
 function startSync(){
   if(!FIREBASE_URL)return;
-  firebasePush();
+  firebaseInitPull();
   startSSE();
   window.addEventListener('focus',function(){
+    firebaseInitPull();
     if(!sseSource||sseSource.readyState===2)startSSE();
   });
-  window.addEventListener('online',startSSE);
+  window.addEventListener('online',function(){
+    firebaseInitPull();
+    startSSE();
+  });
 }
 
 // ── INIT ──────────────────────────────────────────────────
