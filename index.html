@@ -198,8 +198,14 @@ html,body{background:var(--bg);color:var(--fg);font-family:var(--fb);-webkit-tex
 .lp .photo-slot:hover:not(.locked-slot){border-color:var(--la);}
 .photo-slot input{position:absolute;inset:0;opacity:0;cursor:pointer;}
 .panel.locked .photo-slot input{pointer-events:none;}
-.photo-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px;}
+.photo-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px;pointer-events:none;}
 .photo-slot .ph-ico{font-size:1.1rem;pointer-events:none;}
+.view-ph-btn{position:absolute;bottom:3px;right:4px;z-index:10;background:rgba(0,0,0,.55);border:none;border-radius:4px;color:#fff;font-size:.65rem;padding:2px 5px;cursor:pointer;pointer-events:all;line-height:1.4;}
+/* ── LIGHTBOX ─────────────────────────────── */
+#photoModal{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.88);opacity:0;pointer-events:none;transition:opacity .2s;}
+#photoModal.open{opacity:1;pointer-events:all;}
+#photoModal img{max-width:92vw;max-height:88vh;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6);}
+#photoModalClose{position:absolute;top:.9rem;right:.9rem;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 
 /* ── MOBILE ───────────────────────────────── */
 @media(max-width:700px){
@@ -371,16 +377,15 @@ function doLogout(){
 
 // ── PERMISSIONS ───────────────────────────────────────────
 function applyPermissions(user){
-  // Pepicek can only edit panel P; Lenicka only panel L
-  var myPanel    = user === 'Pepicek' ? 'panelP' : 'panelL';
   var otherPanel = user === 'Pepicek' ? 'panelL' : 'panelP';
   var otherEl = document.getElementById(otherPanel);
   if(otherEl){
     otherEl.classList.add('locked');
-    // disable all inputs in other panel
-    otherEl.querySelectorAll('input').forEach(function(inp){
-      inp.disabled = true;
-    });
+    otherEl.querySelectorAll('input').forEach(function(inp){ inp.disabled=true; });
+  }
+  if(user !== 'Pepicek'){
+    var rb=document.getElementById('resetBtn');
+    if(rb)rb.style.display='none';
   }
 }
 
@@ -509,6 +514,53 @@ function updateChart(){
 
 // ── PHOTOS ────────────────────────────────────────────────
 var PHKEY='ca_ph_v3';
+
+function openPhoto(src){
+  document.getElementById('photoModalImg').src=src;
+  document.getElementById('photoModal').classList.add('open');
+}
+function closePhoto(){document.getElementById('photoModal').classList.remove('open');}
+document.getElementById('photoModalClose').addEventListener('click',closePhoto);
+document.getElementById('photoModal').addEventListener('click',function(e){if(e.target===this)closePhoto();});
+
+function showPhoto(who,slot,src){
+  var div=document.getElementById('ph_'+who+'_'+slot);if(!div)return;
+  var img=div.querySelector('img');
+  if(!img){img=document.createElement('img');div.appendChild(img);}
+  img.src=src;
+  var btn=div.querySelector('.view-ph-btn');
+  if(!btn){
+    btn=document.createElement('button');
+    btn.className='view-ph-btn';btn.type='button';btn.textContent='🔍';
+    btn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openPhoto(img.src);});
+    div.appendChild(btn);
+  }
+}
+
+function pushPhoto(who,slot,data){
+  if(!FIREBASE_URL)return;
+  fetch(FIREBASE_URL+'/ca/photos/'+who+'_'+slot+'.json',{
+    method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(data)
+  }).catch(function(){});
+}
+
+function fetchPhotos(){
+  if(!FIREBASE_URL)return;
+  fetch(FIREBASE_URL+'/ca/photos.json')
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(ph){
+      if(!ph||typeof ph!=='object')return;
+      try{var local=JSON.parse(localStorage.getItem(PHKEY))||{};
+        Object.keys(ph).forEach(function(k){local[k]=ph[k];});
+        localStorage.setItem(PHKEY,JSON.stringify(local));
+      }catch(e){}
+      Object.keys(ph).forEach(function(k){
+        var p=k.split('_');if(p.length===2)showPhoto(p[0],p[1],ph[k]);
+      });
+    }).catch(function(){});
+}
+
 function savePhoto(who,slot,inp){
   if(!inp.files||!inp.files[0])return;
   var reader=new FileReader();
@@ -523,19 +575,16 @@ function savePhoto(who,slot,inp){
       var data=canvas.toDataURL('image/jpeg',.72);
       try{var ph=JSON.parse(localStorage.getItem(PHKEY))||{};ph[who+'_'+slot]=data;localStorage.setItem(PHKEY,JSON.stringify(ph));}catch(ex){}
       showPhoto(who,slot,data);
+      pushPhoto(who,slot,data);
     };
     img.src=e.target.result;
   };
   reader.readAsDataURL(inp.files[0]);
 }
-function showPhoto(who,slot,src){
-  var div=document.getElementById('ph_'+who+'_'+slot);if(!div)return;
-  var img=div.querySelector('img');
-  if(!img){img=document.createElement('img');div.appendChild(img);}
-  img.src=src;
-}
+
 function loadPhotos(){
   try{var ph=JSON.parse(localStorage.getItem(PHKEY))||{};Object.keys(ph).forEach(function(k){var p=k.split('_');if(p.length===2)showPhoto(p[0],p[1],ph[k]);});}catch(e){}
+  fetchPhotos();
 }
 
 // ── COUNTDOWN ─────────────────────────────────────────────
@@ -624,7 +673,7 @@ function fetchBoth(){
 
 function resetAllData(){
   if(!confirm('Smazat veškerá data na všech zařízeních?'))return;
-  try{localStorage.removeItem(WKEY);}catch(e){}
+  try{localStorage.removeItem(WKEY);localStorage.removeItem(PHKEY);}catch(e){}
   state={p:{w:{}},l:{w:{}}};
   DATES.forEach(function(d){
     ['p','l'].forEach(function(who){
@@ -632,15 +681,18 @@ function resetAllData(){
       if(el)el.value='';
     });
   });
+  ['p','l'].forEach(function(who){
+    ['before','after'].forEach(function(slot){
+      var div=document.getElementById('ph_'+who+'_'+slot);
+      if(div){div.querySelector('img')&&div.querySelector('img').remove();div.querySelector('.view-ph-btn')&&div.querySelector('.view-ph-btn').remove();}
+    });
+  });
   recalc('p');recalc('l');
   if(FIREBASE_URL){
     ['p','l'].forEach(function(who){
-      fetch(FIREBASE_URL+'/ca/weights/'+who+'.json',{
-        method:'PUT',
-        headers:{'Content-Type':'application/json'},
-        body:'null'
-      }).catch(function(){});
+      fetch(FIREBASE_URL+'/ca/weights/'+who+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:'null'}).catch(function(){});
     });
+    fetch(FIREBASE_URL+'/ca/photos.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:'null'}).catch(function(){});
   }
   lastPushed='';
   showToast('✓ Data smazána');
@@ -674,5 +726,9 @@ if(document.readyState==='loading'){
   initLogin();
 }
 </script>
+<div id="photoModal">
+  <img id="photoModalImg" src="" alt="">
+  <button id="photoModalClose">✕</button>
+</div>
 </body>
 </html>
